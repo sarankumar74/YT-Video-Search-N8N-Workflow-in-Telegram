@@ -1,0 +1,178 @@
+{
+  "name": "Telegram To YT Chat",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -320,
+        -112
+      ],
+      "id": "3aeff700-ec0e-4680-b68c-850ab7d39408",
+      "name": "Telegram Trigger",
+      "webhookId": "a50c7f0a-d9ae-445f-962a-5b7974174401",
+      "credentials": {
+        "telegramApi": {
+          "id": "7lF9neEMUCpt7Zeg",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a helper that converts Telegram messages into clean YouTube search queries.\n\nRules:\n- Return only the search query\n- No explanation\n- No punctuation at the end\n\nUser message:\n{{$json.message.text}}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        -112
+      ],
+      "id": "f582a508-c25e-4943-a7af-265b66b6cfb0",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LuBS2X1hb2oROZJR",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.youtube.com/results",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search_query",
+              "value": "={{ $json.content.parts[0].text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        256,
+        -112
+      ],
+      "id": "8277a3d8-deed-4977-833b-4132482b167d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $json.data;\n\n// find first videoId\nconst match = html.match(/\"videoId\":\"([a-zA-Z0-9_-]{11})\"/);\n\nif (!match) {\n  return [{\n    json: {\n      reply: \"No video found. Try a different search.\"\n    }\n  }];\n}\n\nconst videoId = match[1];\n\n// get original user message\nconst userQuery = $node[\"Telegram Trigger\"].json.message.text;\n\nreturn [{\n  json: {\n    reply: `🔍 You searched for: ${userQuery}\n\n🎬 Here’s your video:\nhttps://www.youtube.com/watch?v=${videoId}`\n  }\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -112
+      ],
+      "id": "ad1a9d81-932f-4fe1-9b1e-8c294252d586",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "={{ $json.reply }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        -112
+      ],
+      "id": "27218e31-5e3b-471d-86fb-3f70b454ea0f",
+      "name": "Send a text message",
+      "webhookId": "8fa395fc-c513-49d1-8d0d-75a1f7346b3a",
+      "credentials": {
+        "telegramApi": {
+          "id": "7lF9neEMUCpt7Zeg",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "42913a43-0b57-446a-8cf2-7ed49e6fd95d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9fe406923d291897eb0509c6cb6010d505fc5e0d10079aee449a5560fcbf43af"
+  },
+  "id": "eJ4ERZ4GZE4Lmbs5",
+  "tags": []
+}
